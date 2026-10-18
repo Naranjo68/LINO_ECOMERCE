@@ -5,7 +5,7 @@ Bienvenido al repositorio oficial del proyecto **LINO**, una plataforma de e-com
 ## 👥 Equipo de Desarrollo
 - Piero David Salas Sanchez (Colaborador / Developer)
 - Sebastian Farfán Espinoza (Colaborador / Developer)
-- [Nombre de Integrante 3]
+- Ramos Marcas Alberit Victor (Colaborador / Developer)
 
 ## 🛠️ Tecnologías Utilizadas
 - **Control de Versiones:** Git & GitHub
