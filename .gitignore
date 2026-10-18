@@ -1,0 +1,12 @@
+node_modules/
+frontend/dist/
+dist/
+.env
+*.log
+.DS_Store
+.vscode/*.log
+data/tienda.json
+data/tienda.tmp
+data/tienda.*.tmp
+data/backups/*
+!data/backups/.gitkeep

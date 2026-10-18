@@ -1,0 +1,24 @@
+{
+  "versionEsquema": 1,
+  "revision": 0,
+  "configuracion": { "moneda": "PEN", "nombre": "LINO" },
+  "productos": [
+    { "id":"prod-001", "nombre":"Polo esencial de algodón", "categoria":"mujer", "descripcion":"Una prenda versátil de corte relajado y textura suave. Ideal para combinar todos los días.", "precioCentimos":5990, "imagen":"/imagenes/polo-algodon.svg", "etiqueta":"Más vendido", "activo":true,
+      "variantes":[{"id":"var-001","talla":"S","color":"Marfil","stock":9},{"id":"var-002","talla":"M","color":"Marfil","stock":12},{"id":"var-003","talla":"L","color":"Marfil","stock":5},{"id":"var-004","talla":"M","color":"Negro","stock":6}] },
+    { "id":"prod-002", "nombre":"Camisa de lino natural", "categoria":"hombre", "descripcion":"Camisa ligera de manga larga con botones y acabados sencillos para un estilo contemporáneo.", "precioCentimos":11990, "imagen":"/imagenes/camisa-lino.svg", "etiqueta":"Nueva colección", "activo":true,
+      "variantes":[{"id":"var-005","talla":"S","color":"Arena","stock":6},{"id":"var-006","talla":"M","color":"Arena","stock":9},{"id":"var-007","talla":"L","color":"Arena","stock":4},{"id":"var-008","talla":"XL","color":"Arena","stock":2}] },
+    { "id":"prod-003", "nombre":"Blazer clásico urbano", "categoria":"mujer", "descripcion":"Silueta estructurada con un acabado cómodo. Diseñado para looks elegantes y cotidianos.", "precioCentimos":16990, "imagen":"/imagenes/blazer-urbano.svg", "etiqueta":"Edición LINO", "activo":true,
+      "variantes":[{"id":"var-009","talla":"S","color":"Caramelo","stock":4},{"id":"var-010","talla":"M","color":"Caramelo","stock":7},{"id":"var-011","talla":"L","color":"Caramelo","stock":0}] },
+    { "id":"prod-004", "nombre":"Pantalón recto relaxed", "categoria":"hombre", "descripcion":"Pantalón de caída recta y cintura confortable para combinaciones fáciles.", "precioCentimos":9990, "imagen":"/imagenes/pantalon-recto.svg", "etiqueta":"", "activo":true,
+      "variantes":[{"id":"var-012","talla":"28","color":"Oliva","stock":4},{"id":"var-013","talla":"30","color":"Oliva","stock":7},{"id":"var-014","talla":"32","color":"Oliva","stock":3},{"id":"var-015","talla":"34","color":"Oliva","stock":0}] },
+    { "id":"prod-005", "nombre":"Sudadera minimal", "categoria":"hombre", "descripcion":"Sudadera de algodón con cuello redondo, tacto agradable y fit holgado.", "precioCentimos":10990, "imagen":"/imagenes/sudadera-minimal.svg", "etiqueta":"Nuevo", "activo":true,
+      "variantes":[{"id":"var-016","talla":"S","color":"Grafito","stock":2},{"id":"var-017","talla":"M","color":"Grafito","stock":10},{"id":"var-018","talla":"L","color":"Grafito","stock":8}] },
+    { "id":"prod-006", "nombre":"Vestido midi de temporada", "categoria":"mujer", "descripcion":"Vestido midi de líneas simples que destaca por su caída ligera y silueta atemporal.", "precioCentimos":13990, "imagen":"/imagenes/vestido-midi.svg", "etiqueta":"Nueva colección", "activo":true,
+      "variantes":[{"id":"var-019","talla":"S","color":"Terracota","stock":5},{"id":"var-020","talla":"M","color":"Terracota","stock":6},{"id":"var-021","talla":"L","color":"Terracota","stock":0}] },
+    { "id":"prod-007", "nombre":"Bolso urbano de lona", "categoria":"accesorios", "descripcion":"Bolso tote amplio de inspiración urbana, ideal para el día a día.", "precioCentimos":4990, "imagen":"/imagenes/bolso-lona.svg", "etiqueta":"", "activo":true,
+      "variantes":[{"id":"var-022","talla":"Única","color":"Natural","stock":15}] },
+    { "id":"prod-008", "nombre":"Chaqueta ligera casual", "categoria":"mujer", "descripcion":"Chaqueta corta con acabado limpio y bolsillos funcionales.", "precioCentimos":15990, "imagen":"/imagenes/chaqueta-casual.svg", "etiqueta":"", "activo":true,
+      "variantes":[{"id":"var-023","talla":"S","color":"Piedra","stock":4},{"id":"var-024","talla":"M","color":"Piedra","stock":6},{"id":"var-025","talla":"L","color":"Piedra","stock":2}] }
+  ],
+  "pedidos": []
+}
