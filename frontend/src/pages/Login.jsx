@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ingresarUsuario, registrarUsuario } from '../services/authApi.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/login.css';
@@ -99,6 +98,5 @@ export default function Login() {
             <button type="button" className="login-switch" onClick={cambiarModo}>{creando ? '¿Ya tienes una cuenta? Inicia sesión' : '¿No tienes cuenta? Crea una'}</button>
         </form>
 
-        <Link className="text-link" to="/"><ArrowLeft size={18} /> Volver al inicio</Link>
     </div>;
 }

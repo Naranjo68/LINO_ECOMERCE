@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext.jsx';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { CarritoProvider, useCarrito } from './context/CarritoContext.jsx';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
@@ -15,6 +15,9 @@ import NoEncontrado from './pages/NoEncontrado.jsx';
 
 function Layout() {
   const { mensaje } = useCarrito();
+  const { usuario, cargando } = useAuth();
+  if (cargando) return <main id="contenido"><div className="container login-page"><p className="loading">Verificando sesión...</p></div></main>;
+  if (!usuario) return <Login />;
   return <><ScrollTop /><Navbar /><main id="contenido">
     <Routes>
       <Route path="/" element={<Inicio />} />
@@ -23,7 +26,7 @@ function Layout() {
       <Route path="/carrito" element={<Carrito />} />
       <Route path="/nosotros" element={<Nosotros />} />
       <Route path="/contacto" element={<Contacto />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NoEncontrado />} />
     </Routes>
   </main><Footer />{mensaje && <div className="toast" role="status">{mensaje}</div>}</>;

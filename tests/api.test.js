@@ -63,10 +63,10 @@ test('P05, P07 y P08 registra, conserva y no duplica un pedido', async () => {
   const envio = { claveSolicitud: 'intento-prueba-002', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-002', cantidad: 2 }] };
   const primera = await api('/api/pedidos', 'POST', envio);
   assert.equal(primera.estado, 201);
-  assert.equal(primera.datos.pedido.totalCentimos, 11980);
+  assert.equal(primera.datos.pedido.totalCentimos, 14136);
   assert.equal(primera.datos.pedido.envioCentimos, 0);
   assert.equal(primera.datos.pedido.cliente.correo, 'cliente@lino.test');
-  assert.equal(primera.datos.pedido.igvCentimos, 1827);
+  assert.equal(primera.datos.pedido.igvCentimos, 2156);
   const segunda = await api('/api/pedidos', 'POST', envio);
   assert.equal(segunda.estado, 200);
   assert.equal(segunda.datos.pedido.id, primera.datos.pedido.id);
@@ -90,7 +90,7 @@ test('P09 concurrencia: solamente una compra obtiene la última unidad', async (
   const resultados = await Promise.all(solicitudes.map(s => api('/api/pedidos', 'POST', s)));
   assert.deepEqual(resultados.map(r => r.estado).sort(), [201, 409]);
 });
-test('P10 cobra envío base cuando solo hay una unidad y calcula IGV incluido', async () => {
+test('P10 cobra envío base y agrega IGV al total cuando hay una unidad', async () => {
   const { estado, datos } = await api('/api/pedidos', 'POST', {
     claveSolicitud: 'pedido-una-unidad',
     direccionEnvio: 'Av. Prueba 123, Lima',
@@ -99,6 +99,6 @@ test('P10 cobra envío base cuando solo hay una unidad y calcula IGV incluido', 
   assert.equal(estado, 201);
   assert.equal(datos.pedido.subtotalCentimos, 5990);
   assert.equal(datos.pedido.envioCentimos, 1200);
-  assert.equal(datos.pedido.totalCentimos, 7190);
-  assert.equal(datos.pedido.igvCentimos, 1097);
+  assert.equal(datos.pedido.igvCentimos, 1294);
+  assert.equal(datos.pedido.totalCentimos, 8484);
 });

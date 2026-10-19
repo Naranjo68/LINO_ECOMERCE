@@ -21,8 +21,8 @@ export default function Carrito() {
   const [direccionEnvio, setDireccionEnvio] = useState('');
   const solicitudRef = useRef(null);
   const envioCentimos = cantidadTotal >= 2 ? 0 : ENVIO_BASE_CENTIMOS;
-  const totalConEnvio = totalCentimos + envioCentimos;
-  const igvCentimos = Math.round(totalConEnvio * IGV_PORCENTAJE / (100 + IGV_PORCENTAJE));
+  const igvCentimos = Math.round((totalCentimos + envioCentimos) * IGV_PORCENTAJE / 100);
+  const totalConEnvio = totalCentimos + envioCentimos + igvCentimos;
   const firmaCarrito = items.map(item => `${item.varianteId}:${item.cantidad}`).join('|');
 
   useEffect(() => {
@@ -125,9 +125,9 @@ export default function Carrito() {
         <p className="overline">TU PEDIDO DE PRUEBA</p><h2>Resumen</h2>
         <div className="summary-row"><span>Subtotal</span><strong>{soles(totalCentimos)}</strong></div>
         <div className="summary-row"><span>Envío</span><strong>{envioCentimos ? soles(envioCentimos) : 'Gratis'}</strong></div>
-        <div className="summary-total"><span>Total</span><strong>{soles(totalConEnvio)}</strong></div>
         <p className="summary-shipping">{cantidadTotal >= 2 ? '¡Tu envío es gratis por llevar 2 o más unidades!' : 'El envío cuesta S/ 12.00. Agrega otra unidad para obtener envío gratis.'}</p>
-        <p className="summary-tax">IGV (18%) incluido: {soles(igvCentimos)}</p>
+        <div className="summary-row"><span>IGV (18%)</span><strong>{soles(igvCentimos)}</strong></div>
+        <div className="summary-total"><span>Total</span><strong>{soles(totalConEnvio)}</strong></div>
         <p className="summary-disclaimer">Esta es una demostración académica. No se realizará ningún cobro real.</p>
         {error && <div className="notice error" role="alert">{error}</div>}
         {cargandoSesion ? <button className="btn btn-dark summary-button" disabled>Verificando sesión...</button> : usuario ? (
@@ -159,8 +159,8 @@ export default function Carrito() {
             </div>
             <div className="receipt-line"><span>Subtotal</span><strong>{soles(totalCentimos)}</strong></div>
             <div className="receipt-line"><span>Envío</span><strong>{envioCentimos ? soles(envioCentimos) : 'Gratis'}</strong></div>
+            <div className="receipt-line"><span>IGV (18%)</span><strong>{soles(igvCentimos)}</strong></div>
             <div className="receipt-line receipt-total"><span>Total</span><strong>{soles(totalConEnvio)}</strong></div>
-            <p>IGV 18% incluido: {soles(igvCentimos)}</p>
           </div>
           {error && <div className="notice error" role="alert">{error}</div>}
           <button type="submit" className="btn btn-dark checkout-pay" disabled={procesando || direccionEnvio.trim().length < 8}>

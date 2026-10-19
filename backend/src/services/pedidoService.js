@@ -39,7 +39,9 @@ export async function registrarPedido(datos, usuario) {
     const subtotalCentimos = lineas.reduce((total, l) => total + l.subtotalCentimos, 0);
     const cantidadTotal = lineas.reduce((total, l) => total + l.cantidad, 0);
     const envioCentimos = cantidadTotal >= UMBRAL_ENVIO_GRATIS ? 0 : ENVIO_BASE_CENTIMOS;
-    const totalCentimos = subtotalCentimos + envioCentimos;
+    const baseImponibleCentimos = subtotalCentimos + envioCentimos;
+    const igvCentimos = Math.round(baseImponibleCentimos * IGV_PORCENTAJE / 100);
+    const totalCentimos = baseImponibleCentimos + igvCentimos;
     const pedido = {
       id: `PED-${randomUUID().slice(0, 8).toUpperCase()}`, claveSolicitud,
       fecha: new Date().toISOString(), estado: 'registrado',
@@ -48,7 +50,7 @@ export async function registrarPedido(datos, usuario) {
       lineas,
       subtotalCentimos,
       envioCentimos,
-      igvCentimos: Math.round(totalCentimos * IGV_PORCENTAJE / (100 + IGV_PORCENTAJE)),
+      igvCentimos,
       totalCentimos,
     };
     for (const item of items) {
