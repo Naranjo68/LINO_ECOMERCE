@@ -1,0 +1,5 @@
+import { ArrowRight, Leaf, Layers, Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
+export default function Nosotros() {
+  return <div className="container info-page"><p className="overline">EL PROYECTO LINO</p><h1>La moda empieza<br/><em>con tu esencia.</em></h1><p className="info-lead">LINO es una propuesta académica de tienda de ropa online pensada para facilitar la exploración de prendas, tallas, colores y pedidos de prueba desde cualquier dispositivo.</p><div className="info-cards"><div><Heart size={31}/><h2>Estilo propio</h2><p>Una colección de prendas versátiles que se adapta a diferentes personalidades.</p></div><div><Layers size={31}/><h2>Experiencia simple</h2><p>Catálogo, detalle y carrito diseñados para una navegación clara y directa.</p></div><div><Leaf size={31}/><h2>Proyecto realista</h2><p>Arquitectura React + Express, inventario en JSON y control de versiones con Git.</p></div></div><Link to="/catalogo" className="btn btn-dark">Explora la colección <ArrowRight size={19}/></Link></div>;
+}
