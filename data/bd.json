@@ -1,0 +1,11 @@
+{
+  "usuarios": [
+    {
+      "id": "6cbbe93c-f69b-4383-ba43-34d440f2f8e8",
+      "nombre": "deve",
+      "correo": "pierosalas222@gmail.com",
+      "contrasenaHash": "835e3cd60ebe356b4a15a412ddadd183:c05026abd520445480dea46175fe6097325389bdf64615469a2eb54925500b1b319f0aee7c8fa00211fb17cd02ef01f91ce6b061cd270ef4328bdff3351d6e7c",
+      "creadoEn": "2026-10-19T01:46:56.696Z"
+    }
+  ]
+}
