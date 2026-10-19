@@ -22,6 +22,6 @@ export async function obtenerProductos(parametros = {}) {
 export async function obtenerProducto(id) {
   return (await solicitar(`/productos/${encodeURIComponent(id)}`)).producto;
 }
-export async function crearPedido(items, claveSolicitud) {
-  return solicitar('/pedidos', { method: 'POST', body: JSON.stringify({ items, claveSolicitud }) });
+export async function crearPedido(datos) {
+  return solicitar('/pedidos', { method: 'POST', body: JSON.stringify(datos) });
 }

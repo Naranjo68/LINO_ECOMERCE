@@ -52,7 +52,7 @@ export default function DetalleProducto() {
     if (!variante || variante.stock <= 0) return;
 
     // Llamamos a la función de Samuel (solo acepta producto y variante)
-    agregar(producto, variante); 
+    if (!agregar(producto, variante, cantidad)) return;
     
     // Mostramos el mensaje de confirmación en pantalla
     setMensajeExito(`¡Se agregó ${producto.nombre} al carrito!`);

@@ -20,21 +20,24 @@ export function CarritoProvider({ children }) {
   }, [mensaje]);
 
   const avisar = texto => setMensaje(texto);
-  function agregar(producto, variante) {
+  function agregar(producto, variante, cantidad = 1) {
     if (!variante || variante.stock < 1) return avisar('La variante seleccionada está agotada.');
     const existente = items.find(item => item.varianteId === variante.id);
-    if (existente && existente.cantidad >= variante.stock) return avisar('Ya agregaste todas las unidades disponibles.');
+    const solicitada = Math.trunc(cantidad);
+    if (!Number.isSafeInteger(solicitada) || solicitada < 1) return avisar('Selecciona una cantidad válida.');
+    if ((existente?.cantidad || 0) + solicitada > variante.stock) return avisar('No hay suficientes unidades disponibles para esa cantidad.');
     setItems(actuales => {
       const actual = actuales.find(item => item.varianteId === variante.id);
-      if (actual) return actuales.map(item => item.varianteId === variante.id ? { ...item, cantidad: Math.min(actual.cantidad + 1, variante.stock), stock: variante.stock } : item);
+      if (actual) return actuales.map(item => item.varianteId === variante.id ? { ...item, cantidad: actual.cantidad + solicitada, stock: variante.stock } : item);
       return [...actuales, {
         productoId: producto.id, varianteId: variante.id,
         nombre: producto.nombre, categoria: producto.categoria, imagen: producto.imagen,
         precioCentimos: producto.precioCentimos, talla: variante.talla,
-        color: variante.color, stock: variante.stock, cantidad: 1,
+        color: variante.color, stock: variante.stock, cantidad: solicitada,
       }];
     });
     avisar('Producto agregado al carrito.');
+    return true;
   }
   const cambiarCantidad = (id, cantidad) => setItems(actuales => actuales.map(item => item.varianteId === id ? { ...item, cantidad: Math.max(1, Math.min(item.stock, Math.trunc(cantidad) || 1)) } : item));
   const eliminar = id => setItems(actuales => actuales.filter(item => item.varianteId !== id));
