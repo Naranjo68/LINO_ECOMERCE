@@ -1,5 +1,4 @@
 
-
 name: LINO CI
 
 on:
@@ -18,9 +17,6 @@ jobs:
   validar:
     name: Pruebas y compilacion de LINO
     runs-on: ubuntu-latest
-
-    env:
-      LINO_DATA_FILE: ${{ runner.temp }}/lino-ci/tienda.json
 
     steps:
       - name: Descargar codigo
@@ -53,3 +49,4 @@ jobs:
           name: lino-frontend-dist
           path: dist/
           retention-days: 7
+
