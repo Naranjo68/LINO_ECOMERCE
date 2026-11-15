@@ -1,0 +1,55 @@
+
+
+name: LINO CI
+
+on:
+  push:
+    branches: [main]
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Pruebas y compilacion de LINO
+    runs-on: ubuntu-latest
+
+    env:
+      LINO_DATA_FILE: ${{ runner.temp }}/lino-ci/tienda.json
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Inicializar datos de prueba
+        run: npm run init:data
+
+      - name: Validar datos JSON
+        run: npm run check:data
+
+      - name: Ejecutar pruebas automatizadas
+        run: npm test
+
+      - name: Compilar frontend React
+        run: npm run build
+
+      - name: Guardar compilacion
+        uses: actions/upload-artifact@v4
+        with:
+          name: lino-frontend-dist
+          path: frontend/dist/
+          retention-days: 7
