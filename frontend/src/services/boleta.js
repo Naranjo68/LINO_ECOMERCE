@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { soles } from './formato.js';
+import { nombreMetodoPago } from './metodosPago.js';
 
 const VERDE = [41, 56, 46];
 const TINTA = [37, 48, 40];
@@ -71,7 +72,7 @@ export function descargarBoleta(pedido) {
   pdf.text(`Fecha: ${new Intl.DateTimeFormat('es-PE', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(pedido.fecha))}`, margen, y);
   y += 9;
 
-  const altoFicha = 37;
+  const altoFicha = 49;
   pdf.setFillColor(...ARENA);
   pdf.roundedRect(margen, y, anchoContenido, altoFicha, 2, 2, 'F');
   pdf.setFont('helvetica', 'bold');
@@ -86,6 +87,12 @@ export function descargarBoleta(pedido) {
   pdf.text(pedido.cliente.correo, margen + 6, y + 22);
   const direccionLineas = pdf.splitTextToSize(`Envío: ${pedido.direccionEnvio || 'No especificada'}`, anchoContenido - 12);
   pdf.text(direccionLineas.slice(0, 2), margen + 6, y + 29);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(...TINTA);
+  pdf.text(`Método elegido: ${nombreMetodoPago(pedido.metodoPago)}`, margen + 6, y + 39);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(...GRIS);
+  pdf.text('Estado de pago: no procesado (demo)', margen + 6, y + 45);
   y += altoFicha + 11;
 
   pdf.setTextColor(...TINTA);

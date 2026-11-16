@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Las pruebas siempre usan los adaptadores JSON aislados; nunca deben escribir en Neon.
+delete process.env.DATABASE_URL;
 const temporal = await mkdtemp(path.join(tmpdir(), 'lino-tests-'));
 const destino = path.join(temporal, 'tienda.json');
 const usuariosDestino = path.join(temporal, 'usuarios.json');
@@ -40,19 +42,40 @@ async function api(ruta, metodo = 'GET', contenido, autenticado = true) {
   return { estado: r.status, datos: await r.json(), cookie: r.headers.get('set-cookie') || '' };
 }
 
+test('Health check informa almacenamiento JSON en pruebas locales', async () => {
+  const { estado, datos } = await api('/api/health');
+  assert.equal(estado, 200);
+  assert.equal(datos.ok, true);
+  assert.equal(datos.proyecto, 'LINO');
+  assert.equal(datos.almacenamiento, 'json-local');
+});
+
 test('P01 filtra el catálogo por categoría', async () => {
   const { estado, datos } = await api('/api/productos?categoria=mujer');
   assert.equal(estado, 200);
   assert.ok(datos.productos.length > 1);
   assert.ok(datos.productos.every(p => p.categoria === 'mujer'));
 });
+test('Catálogo ampliado: 24 productos y variantes únicas', async () => {
+  const { estado, datos } = await api('/api/productos');
+  assert.equal(estado, 200);
+  assert.equal(datos.productos.length, 24);
+  assert.deepEqual(new Set(datos.productos.map(p => p.id)).size, 24);
+  assert.ok(datos.productos.some(p => p.id === 'prod-024'));
+});
 test('P02 un producto inexistente responde 404', async () => {
   const { estado } = await api('/api/productos/no-existe');
   assert.equal(estado, 404);
 });
-test('P04 la cantidad cero se rechaza', async () => {
-  const { estado } = await api('/api/pedidos', 'POST', { claveSolicitud: 'intento-0001', direccionEnvio: 'Av. Prueba 123', items: [{ varianteId: 'var-002', cantidad: 0 }] });
+test('P04 la cantidad cero se rechaza por la validación de cantidad', async () => {
+  const { estado, datos } = await api('/api/pedidos', 'POST', {
+    metodoPago: 'yape',
+    claveSolicitud: 'intento-0001',
+    direccionEnvio: 'Av. Prueba 123',
+    items: [{ varianteId: 'var-002', cantidad: 0 }],
+  });
   assert.equal(estado, 400);
+  assert.match(datos.error, /cantidades inválidas/i);
 });
 test('P04b el pedido requiere una sesión iniciada', async () => {
   const { estado, datos } = await api('/api/pedidos', 'POST', { claveSolicitud: 'intento-sesion-001', direccionEnvio: 'Av. Prueba 123', items: [{ varianteId: 'var-001', cantidad: 1 }] }, false);
@@ -60,23 +83,27 @@ test('P04b el pedido requiere una sesión iniciada', async () => {
   assert.match(datos.error, /Inicia sesión/);
 });
 test('P05, P07 y P08 registra, conserva y no duplica un pedido', async () => {
-  const envio = { claveSolicitud: 'intento-prueba-002', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-002', cantidad: 2 }] };
+  const envio = { metodoPago: 'yape', claveSolicitud: 'intento-prueba-002', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-002', cantidad: 2 }] };
   const primera = await api('/api/pedidos', 'POST', envio);
   assert.equal(primera.estado, 201);
   assert.equal(primera.datos.pedido.totalCentimos, 14136);
   assert.equal(primera.datos.pedido.envioCentimos, 0);
   assert.equal(primera.datos.pedido.cliente.correo, 'cliente@lino.test');
   assert.equal(primera.datos.pedido.igvCentimos, 2156);
+  assert.equal(primera.datos.pedido.metodoPago, 'yape');
+  assert.equal(primera.datos.pedido.estadoPago, 'no_procesado');
   const segunda = await api('/api/pedidos', 'POST', envio);
   assert.equal(segunda.estado, 200);
   assert.equal(segunda.datos.pedido.id, primera.datos.pedido.id);
+  const conflicto = await api('/api/pedidos', 'POST', { ...envio, metodoPago: 'plin' });
+  assert.equal(conflicto.estado, 409); // No se puede reutilizar la clave cambiando método de pago
   const guardado = JSON.parse(await readFile(destino, 'utf8'));
   assert.equal(guardado.pedidos.length, 1);
   assert.equal(guardado.productos[0].variantes.find(v => v.id === 'var-002').stock, 10);
 });
 test('P06 rechaza stock excesivo sin registrar pedido', async () => {
   const previo = JSON.parse(await readFile(destino, 'utf8'));
-  const { estado } = await api('/api/pedidos', 'POST', { claveSolicitud: 'intento-prueba-003', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-002', cantidad: 99 }] });
+  const { estado } = await api('/api/pedidos', 'POST', { metodoPago: 'plin', claveSolicitud: 'intento-prueba-003', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-002', cantidad: 99 }] });
   assert.equal(estado, 409);
   const nuevo = JSON.parse(await readFile(destino, 'utf8'));
   assert.equal(nuevo.pedidos.length, previo.pedidos.length);
@@ -84,15 +111,15 @@ test('P06 rechaza stock excesivo sin registrar pedido', async () => {
 });
 test('P09 concurrencia: solamente una compra obtiene la última unidad', async () => {
   const solicitudes = [
-    { claveSolicitud: 'prueba-concurrente-1', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-008', cantidad: 2 }] },
-    { claveSolicitud: 'prueba-concurrente-2', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-008', cantidad: 2 }] },
+    { metodoPago: 'efectivo', claveSolicitud: 'prueba-concurrente-1', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-008', cantidad: 2 }] },
+    { metodoPago: 'efectivo', claveSolicitud: 'prueba-concurrente-2', direccionEnvio: 'Av. Prueba 123, Lima', items: [{ varianteId: 'var-008', cantidad: 2 }] },
   ];
   const resultados = await Promise.all(solicitudes.map(s => api('/api/pedidos', 'POST', s)));
   assert.deepEqual(resultados.map(r => r.estado).sort(), [201, 409]);
 });
 test('P10 cobra envío base y agrega IGV al total cuando hay una unidad', async () => {
   const { estado, datos } = await api('/api/pedidos', 'POST', {
-    claveSolicitud: 'pedido-una-unidad',
+    metodoPago: 'tarjeta', claveSolicitud: 'pedido-una-unidad',
     direccionEnvio: 'Av. Prueba 123, Lima',
     items: [{ varianteId: 'var-001', cantidad: 1 }],
   });
@@ -101,4 +128,29 @@ test('P10 cobra envío base y agrega IGV al total cuando hay una unidad', async 
   assert.equal(datos.pedido.envioCentimos, 1200);
   assert.equal(datos.pedido.igvCentimos, 1294);
   assert.equal(datos.pedido.totalCentimos, 8484);
+});
+
+test('Métodos de pago: se rechaza un valor no permitido', async () => {
+  const { estado, datos } = await api('/api/pedidos', 'POST', {
+    claveSolicitud: 'metodo-invalido-001', direccionEnvio: 'Av. Prueba 123',
+    metodoPago: 'bitcoin', items: [{ varianteId: 'var-003', cantidad: 1 }],
+  });
+  assert.equal(estado, 400);
+  assert.match(datos.error, /método válido/);
+});
+test('Métodos de pago: hay que elegir una opción', async () => {
+  const { estado } = await api('/api/pedidos', 'POST', {
+    claveSolicitud: 'sin-metodo-001', direccionEnvio: 'Av. Prueba 123',
+    items: [{ varianteId: 'var-003', cantidad: 1 }],
+  });
+  assert.equal(estado, 400);
+});
+test('Métodos de pago: Plin guarda elección, nunca cobra', async () => {
+  const { estado, datos } = await api('/api/pedidos', 'POST', {
+    claveSolicitud: 'compra-plin-001', metodoPago: 'plin',
+    direccionEnvio: 'Av. Prueba 123', items: [{ varianteId: 'var-003', cantidad: 1 }],
+  });
+  assert.equal(estado, 201);
+  assert.equal(datos.pedido.metodoPago, 'plin');
+  assert.equal(datos.pedido.estadoPago, 'no_procesado');
 });

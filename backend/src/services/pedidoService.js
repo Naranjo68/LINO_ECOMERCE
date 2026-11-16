@@ -5,12 +5,14 @@ import { HttpError } from '../middleware/HttpError.js';
 const ENVIO_BASE_CENTIMOS = 1200;
 const UMBRAL_ENVIO_GRATIS = 2;
 const IGV_PORCENTAJE = 18;
+const METODOS_PAGO = new Set(['yape', 'plin', 'tarjeta', 'efectivo']);
 
 export async function registrarPedido(datos, usuario) {
-  const { claveSolicitud, items, direccionEnvio } = datos ?? {};
+  const { claveSolicitud, items, direccionEnvio, metodoPago } = datos ?? {};
   if (typeof claveSolicitud !== 'string' || claveSolicitud.length < 8 || claveSolicitud.length > 100) throw new HttpError(400, 'La clave de solicitud debe tener entre 8 y 100 caracteres.');
   if (!Array.isArray(items) || items.length === 0 || items.length > 40) throw new HttpError(400, 'Agrega al menos un producto válido al carrito.');
   if (typeof direccionEnvio !== 'string' || direccionEnvio.trim().length < 8 || direccionEnvio.trim().length > 300) throw new HttpError(400, 'Ingresa una dirección de envío válida (entre 8 y 300 caracteres).');
+  if (!METODOS_PAGO.has(metodoPago)) throw new HttpError(400, 'Selecciona un método válido: Yape, Plin, tarjeta o efectivo.');
   const agregados = new Set();
   for (const item of items) {
     if (!item || typeof item.varianteId !== 'string' || !item.varianteId || !Number.isSafeInteger(item.cantidad) || item.cantidad < 1 || item.cantidad > 99 || agregados.has(item.varianteId)) throw new HttpError(400, 'Hay variantes duplicadas o cantidades inválidas.');
@@ -21,7 +23,7 @@ export async function registrarPedido(datos, usuario) {
     if (existente) {
       const anterior = existente.lineas.map(l => ({ varianteId: l.varianteId, cantidad: l.cantidad })).sort((a, b) => a.varianteId.localeCompare(b.varianteId));
       const nuevo = items.map(l => ({ varianteId: l.varianteId, cantidad: l.cantidad })).sort((a, b) => a.varianteId.localeCompare(b.varianteId));
-      if (JSON.stringify(anterior) !== JSON.stringify(nuevo) || existente.direccionEnvio !== direccionEnvio.trim() || existente.cliente?.id !== usuario.id) throw new HttpError(409, 'La clave de solicitud pertenece a una selección distinta.');
+      if (JSON.stringify(anterior) !== JSON.stringify(nuevo) || existente.direccionEnvio !== direccionEnvio.trim() || existente.cliente?.id !== usuario.id || existente.metodoPago !== metodoPago) throw new HttpError(409, 'La clave de solicitud pertenece a una selección distinta.');
       return { pedido: existente, repetido: true, sinCambios: true };
     }
     const lineas = items.map(item => {
@@ -47,6 +49,8 @@ export async function registrarPedido(datos, usuario) {
       fecha: new Date().toISOString(), estado: 'registrado',
       cliente: { id: usuario.id, nombre: usuario.nombre, correo: usuario.correo },
       direccionEnvio: direccionEnvio.trim(),
+      metodoPago,
+      estadoPago: 'no_procesado', // Los cuatro métodos son demostrativos, nunca se cobra dinero.
       lineas,
       subtotalCentimos,
       envioCentimos,

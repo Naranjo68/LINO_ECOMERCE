@@ -2,6 +2,7 @@ import { readFile, writeFile, rename, copyFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { usaPostgres, obtenerPool } from '../db/postgres.js';
 
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const archivo = () => process.env.LINO_DATA_FILE || path.join(raiz, 'data', 'tienda.json');
@@ -32,12 +33,52 @@ export function validarTienda(data) {
 }
 
 export async function leerTienda() {
-  // La falta del archivo es un error explícito: ejecutar npm run init:data.
+  if (usaPostgres()) {
+    const pool = await obtenerPool();
+    const { rows } = await pool.query('SELECT documento FROM lino_tienda_state WHERE id = 1');
+    if (!rows.length) throw new Error('La tienda aún no está inicializada en PostgreSQL. Ejecuta npm run db:init.');
+    return validarTienda(rows[0].documento);
+  }
+
+  // Modo local y pruebas: almacenamiento JSON en el equipo.
   const texto = await readFile(archivo(), 'utf8');
   return validarTienda(JSON.parse(texto));
 }
 
-export function actualizarTienda(mutar) {
+export async function actualizarTienda(mutar) {
+  if (usaPostgres()) {
+    const pool = await obtenerPool();
+    const cliente = await pool.connect();
+    try {
+      // El bloqueo de fila serializa las compras entre peticiones e instancias.
+      await cliente.query('BEGIN');
+      const { rows } = await cliente.query('SELECT documento FROM lino_tienda_state WHERE id = 1 FOR UPDATE');
+      if (!rows.length) throw new Error('La tienda aún no está inicializada en PostgreSQL. Ejecuta npm run db:init.');
+
+      const previo = validarTienda(rows[0].documento);
+      const nuevo = structuredClone(previo);
+      const resultado = await mutar(nuevo);
+      if (resultado?.sinCambios) {
+        await cliente.query('COMMIT');
+        return resultado;
+      }
+
+      nuevo.revision = previo.revision + 1;
+      validarTienda(nuevo);
+      await cliente.query(
+        'UPDATE lino_tienda_state SET documento = $1::jsonb, actualizado_en = NOW() WHERE id = 1',
+        [JSON.stringify(nuevo)],
+      );
+      await cliente.query('COMMIT');
+      return resultado;
+    } catch (error) {
+      await cliente.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      cliente.release();
+    }
+  }
+
   const operacion = cola.then(async () => {
     const previo = await leerTienda();
     const nuevo = structuredClone(previo);
@@ -50,13 +91,12 @@ export function actualizarTienda(mutar) {
     await mkdir(path.join(carpeta, 'backups'), { recursive: true });
     const respaldo = path.join(carpeta, 'backups', `tienda-${Date.now()}-${randomUUID().slice(0, 8)}.json`);
     const temporal = path.join(carpeta, `tienda.${randomUUID()}.tmp`);
-    // Sólo una instancia de Node debe escribir este archivo.
+    // Sólo una instancia local de Node debe escribir este archivo.
     await copyFile(destino, respaldo);
     await writeFile(temporal, JSON.stringify(nuevo, null, 2) + '\n', { flag: 'wx' });
     await rename(temporal, destino);
     return resultado;
   });
-  // Los errores de una operación no deben bloquear la siguiente.
   cola = operacion.catch(() => {});
   return operacion;
 }

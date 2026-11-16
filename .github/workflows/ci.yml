@@ -1,28 +1,32 @@
-
 name: LINO CI
 
 on:
   push:
-    branches: [main]
-
+    branches:
+      - main
   pull_request:
-    branches: [main]
-
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: lino-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validar:
     name: Pruebas y compilacion de LINO
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Descargar codigo
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Configurar Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -34,19 +38,19 @@ jobs:
       - name: Inicializar datos de prueba
         run: npm run init:data
 
-      - name: Validar datos JSON
+      - name: Validar estructura del catalogo JSON
         run: npm run check:data
 
-      - name: Ejecutar pruebas automatizadas
+      - name: Ejecutar pruebas automatizadas de la API
         run: npm test
 
-      - name: Compilar frontend React
+      - name: Compilar frontend React con Vite
         run: npm run build
 
-      - name: Guardar compilacion
+      - name: Guardar compilacion como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: lino-frontend-dist
-          path: dist/
+          path: frontend/dist/
+          if-no-files-found: error
           retention-days: 7
-

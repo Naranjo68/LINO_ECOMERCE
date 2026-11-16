@@ -2,6 +2,8 @@ node_modules/
 frontend/dist/
 dist/
 .env
+.env.*
+!.env.example
 *.log
 .DS_Store
 .vscode/*.log
@@ -10,3 +12,7 @@ data/tienda.tmp
 data/tienda.*.tmp
 data/backups/*
 !data/backups/.gitkeep
+
+# Datos personales y sesiones locales (NO subir a GitHub)
+data/bd.json
+data/bd.*.tmp

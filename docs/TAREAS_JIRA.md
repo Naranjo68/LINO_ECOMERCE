@@ -38,3 +38,13 @@
 - `feature/LINO-8-json` para persistencia.
 
 Registrar los commits, PR, revisiones y conflictos reales en GitHub y Jira después de realizar el trabajo.
+
+## Ampliación propuesta para Jira: catálogo y checkout
+
+- **KAN-CAT:** ampliar catálogo de 8 a 24 productos (tres categorías, tallas y stock) e incorporar ilustraciones locales.
+- **KAN-PAGO:** implementar selección de Yape, Plin, tarjeta o efectivo **simulados** antes de confirmar el pedido; impedir registro sin selección.
+- **KAN-API:** validar métodos en API, almacenar `metodoPago` y `estadoPago` en JSON, rechazar métodos inválidos y reintentos con método diferente.
+- **KAN-DATOS:** inicialización idempotente que agrega nuevos productos a tiendas existentes conservando pedidos y stock, con respaldo automático.
+- **KAN-PDF:** reflejar método de pago y estado de cobro no procesado en boleta académica.
+
+> Reemplazar estas claves por las claves reales que cree el equipo en su tablero Jira. Las tareas propuestas no acreditan avances ni commits ejecutados en GitHub.

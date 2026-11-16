@@ -1,113 +1,95 @@
-# Arquitectura técnica de LINO (React + Express + JSON)
+# Arquitectura técnica de LINO (React + Express + PostgreSQL/JSON)
 
 ## Vista general
 
+LINO conserva una arquitectura cliente-servidor. En desarrollo local utiliza archivos JSON; en despliegue utiliza PostgreSQL (Neon) para que los datos sobrevivan a los reinicios del servidor Render.
+
 ```text
-Navegador (http://localhost:5173)
+NAVEGADOR
    │
-   ├── React + React Router: pantallas y navbar
-   ├── CarritoContext + localStorage: estado temporal del carrito
-   │
+   ▼
+VERCEL (React + Vite)
+   ├── Páginas, componentes, React Router
+   ├── CarritoContext y estado temporal del carrito
    └── fetch('/api/...')
-             │ proxy de Vite
-             ▼
-Express (http://127.0.0.1:3001)
-   │
-   ├── routes/       URLs de productos y pedidos
+          │ rewrite same-origin
+          ▼
+RENDER (Node.js + Express)
+   ├── routes/       productos, pedidos y usuarios
    ├── controllers/  solicitudes y respuestas HTTP
-   ├── services/     precios, existencias, reglas de negocio
-   └── repositories/jsonStore.js
-             │ cola de escritura, validación, respaldo, temporal
-             ▼
-       data/tienda.json
-       data/backups/*.json
+   ├── services/     precios, stock, autenticación y reglas
+   └── repositories/
+          ├── jsonStore.js      JSON local o documento PostgreSQL
+          └── usuariosStore.js  JSON local o documento PostgreSQL
+                  │
+                  ▼
+             NEON POSTGRESQL
+             ├── lino_tienda_state
+             │     └── catálogo, variantes, stock, pedidos
+             └── lino_usuarios_state
+                   └── usuarios y hashes de contraseña
 ```
 
-## Árbol de carpetas
+## Persistencia local y de producción
 
-```text
-LINO_React_VSCode/
-│
-├── frontend/
-│   ├── index.html
-│   ├── public/
-│   │   ├── favicon.svg
-│   │   └── imagenes/                  # Ilustraciones locales
-│   └── src/
-│       ├── main.jsx                  # Monta React
-│       ├── App.jsx                   # Rutas y layout general
-│       ├── components/
-│       │   ├── Navbar.jsx            # MENÚ / NAVBAR
-│       │   ├── Footer.jsx
-│       │   ├── ProductCard.jsx
-│       │   └── ScrollTop.jsx
-│       ├── pages/
-│       │   ├── Inicio.jsx             # PÁGINA DE INICIO
-│       │   ├── Catalogo.jsx
-│       │   ├── DetalleProducto.jsx
-│       │   ├── Carrito.jsx
-│       │   ├── Nosotros.jsx
-│       │   ├── Contacto.jsx
-│       │   └── NoEncontrado.jsx
-│       ├── context/CarritoContext.jsx
-│       ├── services/api.js
-│       ├── services/formato.js
-│       └── styles/global.css
-│
-├── backend/src/
-│   ├── server.js                     # Levanta el servidor
-│   ├── app.js                        # Configura Express
-│   ├── routes/{productos,pedidos}.js
-│   ├── controllers/{productoController,pedidoController}.js
-│   ├── services/{productoService,pedidoService}.js
-│   ├── repositories/jsonStore.js     # Persistencia JSON
-│   └── middleware/{HttpError,errorHandler}.js
-│
-├── data/
-│   ├── tienda.example.json          # SE SUBE A GITHUB
-│   ├── tienda.json                  # SE CREA EN CADA EQUIPO (gitignore)
-│   └── backups/                     # RESPALDOS LOCALES (gitignore)
-│
-├── scripts/{init-data,validate-data}.js
-├── tests/api.test.js
-├── docs/
-├── .vscode/
-├── .gitignore
-├── package.json
-└── vite.config.js
-```
+### Desarrollo local
 
-## Navegación React Router
+Cuando `DATABASE_URL` no existe, los repositorios usan:
 
-- `/` -> Inicio
-- `/catalogo` -> Colección completa
-- `/catalogo?categoria=mujer` -> Mujer
-- `/catalogo?categoria=hombre` -> Hombre
-- `/catalogo?categoria=accesorios` -> Accesorios
-- `/catalogo?buscar=polo` -> Búsqueda
-- `/producto/prod-001` -> Detalle, talla, color y botón de carrito
-- `/carrito` -> Cantidades, importe, pedido ficticio
-- `/nosotros`, `/contacto` -> Información
+- `data/tienda.json`: catálogo, variantes, stock, pedidos y revisión.
+- `data/bd.json`: usuarios con hash scrypt de contraseña.
 
-## Proceso de compra ficticia
+Los archivos se ignoran en Git. `npm run init:data` prepara el catálogo de ejemplo.
+
+### Producción con Neon
+
+Cuando `DATABASE_URL` está definida, los repositorios usan PostgreSQL. Para mantener la lógica actual del sistema y minimizar cambios en los servicios, el estado de tienda y la lista de usuarios se guardan como documentos JSONB singleton:
+
+- `lino_tienda_state(id=1, documento JSONB)`: productos, variantes, stock, pedidos y revisión.
+- `lino_usuarios_state(id=1, usuarios JSONB)`: usuarios y hashes.
+
+Las operaciones de escritura usan transacciones y `SELECT ... FOR UPDATE`, de modo que las compras se serializan en la fila de tienda y se conserva el control de stock/idempotencia entre solicitudes. Esta es una persistencia documental sobre PostgreSQL; si el proyecto evoluciona a una tienda de producción, se recomienda normalizar productos, variantes, pedidos y líneas en tablas relacionadas.
+
+`npm run db:init` crea las tablas e importa los archivos locales si existen; si no existen, usa `data/tienda.example.json` y una lista de usuarios vacía. La inserción inicial utiliza `ON CONFLICT DO NOTHING`, por lo que no sobrescribe datos ya existentes.
+
+## Frontend
+
+- React 18 y Vite.
+- React Router DOM para navegación.
+- `frontend/src/services/api.js` y `authApi.js` llaman a `/api`.
+- Vercel reescribe `/api/*` hacia Render sin cambiar el dominio visible en el navegador. Esto permite mantener las cookies HttpOnly como same-origin.
+- `vite.config.js` mantiene el proxy local hacia `127.0.0.1:3001`.
+
+## Backend
+
+- Node.js 20.12+ y Express 4.
+- `backend/src/server.js` escucha en `0.0.0.0` y en `process.env.PORT` para Render.
+- `/api/health` comprueba la conexión a PostgreSQL cuando `DATABASE_URL` está configurada.
+- `LINO_SESSION_SECRET` debe mantenerse estable en producción.
+- CORS puede habilitarse para orígenes externos mediante `CORS_ORIGINS`; con el rewrite same-origin de Vercel normalmente no es necesario.
+
+## Proceso de compra
 
 1. React recupera productos mediante GET `/api/productos`.
-2. El cliente selecciona talla y color en `DetalleProducto.jsx`.
-3. `CarritoContext` conserva temporalmente la selección en `localStorage`.
-4. Al confirmar, React envía **solo IDs de variantes, cantidades y clave de reintento**.
-5. Express verifica el JSON, producto activo, stock y precio vigente; genera el identificador del pedido.
-6. `jsonStore.js` ejecuta el cambio en la cola de escritura y guarda respaldo + nuevo JSON.
-7. El servidor devuelve un resumen ficticio con código PED; la interfaz muestra confirmación.
+2. El usuario elige variante y cantidad.
+3. El carrito conserva temporalmente la selección.
+4. React envía IDs de variantes, cantidades y clave de solicitud.
+5. Express comprueba sesión, producto activo, stock y precio vigente.
+6. El repositorio actualiza el estado dentro de una transacción PostgreSQL (producción) o una cola de escritura JSON (local).
+7. El servidor devuelve el pedido y el resumen de importes.
 
-## Reglas aplicadas
+## Pagos demostrativos
 
-- `precioCentimos` es un entero; `5990` = `S/ 59,90`.
-- Stock por variante (`id`, `talla`, `color`, `stock`).
-- No se confía en totales enviados desde frontend.
-- Se rechazan cantidades no enteras, variantes repetidas y falta de stock.
-- Misma clave de solicitud + mismas líneas = misma respuesta sin descontar de nuevo.
-- Solo una instancia escribe el archivo JSON. No se garantiza coordinación entre procesos separados.
+Yape, Plin, tarjeta y efectivo son métodos simulados. No se procesan cobros, no se reciben datos bancarios ni se emiten comprobantes tributarios. El pedido conserva `estadoPago: "no_procesado"`.
 
-## Mejoras futuras
+## Despliegue y automatización
 
-El documento de segundo avance también propone administración autorizada y recuperación formal. **No están terminadas en este starter**. Es preferible dejar pendientes esas funcionalidades a simular controles de seguridad inexistentes.
+- Vercel: frontend React, build `npm run build`, output `frontend/dist` y rewrite `/api/*`.
+- Render: API Express, build `npm ci`, start `npm run db:init && npm run start:api`, health check `/api/health`.
+- Neon: PostgreSQL persistente.
+- GitHub Actions: instala dependencias, inicializa datos JSON temporales para pruebas, valida, ejecuta `npm test` y compila React.
+- CD: Render y Vercel se conectan a GitHub y despliegan commits de `main` automáticamente.
+
+## Límites conocidos
+
+Los planes gratuitos pueden suspender servicios por inactividad y tienen límites de uso. Render Free usa filesystem efímero, por lo que la persistencia de producción depende de Neon. El despliegue gratuito es apropiado para una demostración académica, no para un comercio con disponibilidad garantizada.

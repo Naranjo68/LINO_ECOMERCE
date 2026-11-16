@@ -5,6 +5,8 @@ import { useCarrito } from '../context/CarritoContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { crearPedido } from '../services/api.js';
 import { soles } from '../services/formato.js';
+import SelectorPago from '../components/SelectorPago.jsx';
+import { nombreMetodoPago } from '../services/metodosPago.js';
 import '../styles/checkout.css';
 
 const ENVIO_BASE_CENTIMOS = 1200;
@@ -19,6 +21,7 @@ export default function Carrito() {
   const [confirmacion, setConfirmacion] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [direccionEnvio, setDireccionEnvio] = useState('');
+  const [metodoPago, setMetodoPago] = useState('');
   const solicitudRef = useRef(null);
   const envioCentimos = cantidadTotal >= 2 ? 0 : ENVIO_BASE_CENTIMOS;
   const igvCentimos = Math.round((totalCentimos + envioCentimos) * IGV_PORCENTAJE / 100);
@@ -41,12 +44,14 @@ export default function Carrito() {
 
   function abrirConfirmacion() {
     setError('');
+    setMetodoPago('');
     setModalAbierto(true);
   }
 
   async function pagar(evento) {
     evento.preventDefault();
     if (!items.length || procesando || !usuario) return;
+    if (!metodoPago) { setError('Selecciona una forma de pago antes de confirmar.'); return; }
     setError('');
     setErrorBoleta('');
     setProcesando(true);
@@ -56,6 +61,7 @@ export default function Carrito() {
         items: items.map(item => ({ varianteId: item.varianteId, cantidad: item.cantidad })),
         claveSolicitud: solicitudRef.current,
         direccionEnvio,
+        metodoPago,
       });
       solicitudRef.current = null;
       setConfirmacion(respuesta.pedido);
@@ -90,7 +96,9 @@ export default function Carrito() {
       <CheckCircle2 size={37}/><div>
         <h2>¡Pedido de prueba registrado!</h2>
         <p>Boleta: <strong>{confirmacion.id}</strong></p>
-        <p>Total con envío: <strong>{soles(confirmacion.totalCentimos)}</strong>. El pedido quedó registrado en esta demostración; no se realizó ningún cobro.</p>
+        <p>Total del pedido: <strong>{soles(confirmacion.totalCentimos)}</strong>.</p>
+        <p>Método elegido: <strong>{nombreMetodoPago(confirmacion.metodoPago)}</strong>. Estado: <strong>sin cobro real</strong>.</p>
+        <p>Pedido académico registrado. No se ha procesado ningún pago ni realizado un cargo bancario.</p>
         {errorBoleta && <div className="notice error" role="alert">{errorBoleta}</div>}
         <button type="button" className="text-link receipt-download" onClick={reintentarDescarga}><Download size={17}/> Descargar boleta.pdf</button>
         <Link className="text-link" to="/catalogo">Seguir explorando <ArrowRight size={17}/></Link>
@@ -128,10 +136,10 @@ export default function Carrito() {
         <p className="summary-shipping">{cantidadTotal >= 2 ? '¡Tu envío es gratis por llevar 2 o más unidades!' : 'El envío cuesta S/ 12.00. Agrega otra unidad para obtener envío gratis.'}</p>
         <div className="summary-row"><span>IGV (18%)</span><strong>{soles(igvCentimos)}</strong></div>
         <div className="summary-total"><span>Total</span><strong>{soles(totalConEnvio)}</strong></div>
-        <p className="summary-disclaimer">Esta es una demostración académica. No se realizará ningún cobro real.</p>
+        <p className="summary-disclaimer">Yape · Plin · Tarjeta · Efectivo disponibles en modo demostración. No se realizarán cobros reales.</p>
         {error && <div className="notice error" role="alert">{error}</div>}
         {cargandoSesion ? <button className="btn btn-dark summary-button" disabled>Verificando sesión...</button> : usuario ? (
-          <button className="btn btn-dark summary-button" onClick={abrirConfirmacion}>Confirmar pedido de prueba <ArrowRight size={19}/></button>
+          <button className="btn btn-dark summary-button" onClick={abrirConfirmacion}>Elegir cómo pagar <ArrowRight size={19}/></button>
         ) : (
           <Link to="/login" className="btn btn-dark summary-button">Inicia sesión para continuar <ArrowRight size={19}/></Link>
         )}
@@ -143,12 +151,14 @@ export default function Carrito() {
     {modalAbierto && <div className="checkout-backdrop" onMouseDown={evento => { if (evento.target === evento.currentTarget && !procesando) setModalAbierto(false); }}>
       <section className="checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-title">
         <button type="button" className="checkout-close" aria-label="Cerrar ventana" disabled={procesando} onClick={() => setModalAbierto(false)}><X size={20}/></button>
-        <p className="overline">ÚLTIMO PASO</p>
-        <h2 id="checkout-title">Confirma tu <em>pedido.</em></h2>
+        <p className="overline">FINALIZAR COMPRA · PASO 1 DE 2</p>
+        <h2 id="checkout-title">Elige cómo <em>pagar.</em></h2>
         <p className="checkout-customer">{usuario?.nombre}<br/><span>{usuario?.correo}</span></p>
         <form onSubmit={pagar}>
           <label className="checkout-label" htmlFor="direccion-envio">Dirección de envío</label>
           <textarea id="direccion-envio" value={direccionEnvio} onChange={evento => { setDireccionEnvio(evento.target.value); solicitudRef.current = null; }} placeholder="Calle, número, distrito, ciudad" rows="3" maxLength="300" required minLength="8" disabled={procesando}/>
+          <SelectorPago valor={metodoPago} onChange={valor => { setMetodoPago(valor); solicitudRef.current = null; setError(''); }} deshabilitado={procesando}/>
+          <div className="checkout-next-step">PASO 2 DE 2 · REVISA TU PEDIDO</div>
           <div className="receipt-preview">
             <h3>Resumen de boleta</h3>
             <div className="receipt-lines">
@@ -161,12 +171,13 @@ export default function Carrito() {
             <div className="receipt-line"><span>Envío</span><strong>{envioCentimos ? soles(envioCentimos) : 'Gratis'}</strong></div>
             <div className="receipt-line"><span>IGV (18%)</span><strong>{soles(igvCentimos)}</strong></div>
             <div className="receipt-line receipt-total"><span>Total</span><strong>{soles(totalConEnvio)}</strong></div>
+            <div className="receipt-line"><span>Método de pago</span><strong>{nombreMetodoPago(metodoPago)}</strong></div>
           </div>
           {error && <div className="notice error" role="alert">{error}</div>}
-          <button type="submit" className="btn btn-dark checkout-pay" disabled={procesando || direccionEnvio.trim().length < 8}>
-            {procesando ? 'Registrando pedido...' : 'Pagar y descargar boleta'} <ArrowRight size={18}/>
+          <button type="submit" className="btn btn-dark checkout-pay" disabled={procesando || direccionEnvio.trim().length < 8 || !metodoPago}>
+            {procesando ? 'Registrando pedido...' : 'Confirmar pedido de prueba'} <ArrowRight size={18}/>
           </button>
-          <p className="checkout-disclaimer">Pago simulado: no se solicitarán datos bancarios ni se realizará un cobro.</p>
+          <p className="checkout-disclaimer">Todos los métodos son simulados. Yape y Plin no tienen QR real; tarjeta no solicita números ni CVV; efectivo se registra sin recibir dinero. La boleta es solo demostrativa.</p>
         </form>
       </section>
     </div>}
